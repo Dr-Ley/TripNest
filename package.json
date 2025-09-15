@@ -12,6 +12,9 @@
     "install-client": "cd frontend && npm install",
     "heroku-postbuild": "npm run install-client && npm run build"
   },
+  "engines": {
+    "node": "18.x"
+  },
   "keywords": [
     "travel",
     "booking",
