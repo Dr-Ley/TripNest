@@ -2,6 +2,7 @@ const express = require('express');
 const Attraction = require('../models/Attraction');
 const router = express.Router();
 
+
 // @route   GET /api/attractions
 // @desc    Get all attractions with optional filtering
 // @access  Public

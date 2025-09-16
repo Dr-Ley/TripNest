@@ -5,6 +5,16 @@ const path = require('path');
 const session = require('express-session');
 require('dotenv').config();
 
+// Import routes FIRST
+const authRoutes = require('./routes/auth');
+const productRoutes = require('./routes/products');
+const cartRoutes = require('./routes/cart');
+const bookingRoutes = require('./routes/bookings');
+const hotelRoutes = require('./routes/hotels');
+const restaurantRoutes = require('./routes/restaurants');
+const attractionRoutes = require('./routes/attractions');
+const orderRoutes = require('./routes/orders');
+
 const app = express();
 
 // Middleware
@@ -39,15 +49,6 @@ mongoose.connect(MONGODB_URI, {
 .then(() => console.log("✅ MongoDB Connected"))
 .catch(err => console.error("❌ MongoDB Error:", err));
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const productRoutes = require('./routes/products');
-const cartRoutes = require('./routes/cart');
-const bookingRoutes = require('./routes/bookings');
-const hotelRoutes = require('./routes/hotels');
-const restaurantRoutes = require('./routes/restaurants');
-const attractionRoutes = require('./routes/attractions');
-const orderRoutes = require('./routes/orders');
 
 
 // Basic route
@@ -58,9 +59,9 @@ app.get('/', (req, res) => {
 /* ----------  PRODUCTION FRONT-END  ---------- */
 /* ➜ 2.  static + catch-all  LAST  */
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'client', 'build')));
+  app.use(express.static(path.join(__dirname, 'frontend', 'build')));
   app.get('*', (req, res) =>
-    res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'))
+    res.sendFile(path.join(__dirname, 'frontend', 'build', 'index.html'))
   );
 }
 

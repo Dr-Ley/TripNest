@@ -1,0 +1,23 @@
+# Environment Variables Template for TripNest
+# Copy this to .env and fill in your actual values
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/tripnest
+
+# Server Configuration
+PORT=5000
+NODE_ENV=development
+
+# Client URL (for CORS)
+CLIENT_URL=http://localhost:3000
+
+# JWT Secret
+JWT_SECRET=your-super-secret-jwt-key-here
+
+# Stripe Configuration (if using payments)
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
+STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
+
+# Session Secret
+SESSION_SECRET=your-session-secret-key-here
