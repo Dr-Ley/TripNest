@@ -37,6 +37,9 @@ import {
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
+/*  ➜  NEW IMPORT  */
+import { createBooking } from '../api/bookings';
+
 const AttractionBookingForm = ({ open, onClose, attractionData }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -57,25 +60,21 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
     specialRequests: '',
   });
 
-  // Pre-fill form with user data if logged in
+  /*  pre-fill logic  */
   React.useEffect(() => {
     if (user && attractionData) {
-      // Split the user's full name into first and last name
       const nameParts = (user.name || '').split(' ');
-      const firstName = nameParts[0] || '';
-      const lastName = nameParts.slice(1).join(' ') || '';
-      
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        firstName: firstName,
-        lastName: lastName,
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
         email: user.email || '',
         phone: user.phone || '',
       }));
     }
   }, [user, attractionData]);
 
-  // Check if user is authenticated
+  /*  auth-gate  */
   if (!user) {
     return (
       <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -114,83 +113,65 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
   }
 
   const handleInputChange = (field) => (event) => {
-    setFormData({
-      ...formData,
-      [field]: event.target.value,
-    });
+    setFormData({ ...formData, [field]: event.target.value });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
-      const bookingData = {
-        ...formData,
-        attraction: attractionData?.name || formData.attraction || 'General Attraction Booking',
-        attractionName: attractionData?.name || formData.attraction || 'General Attraction Booking',
-        attractionLocation: attractionData?.location || 'Not specified',
+      const bookingPayload = {
         bookingType: 'attraction',
-        bookingDate: new Date().toISOString(),
+        attractionName: attractionData?.name || 'General Attraction Booking',
+        attractionLocation: attractionData?.location || 'Not specified',
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        phone: formData.phone,
+        date: formData.date,
+        time: formData.time,
+        guests: formData.guests,
+        specialRequests: formData.specialRequests,
+        price: attractionData?.price || 30,
+        productId: attractionData?.id,
         status: 'pending',
+        bookingDate: new Date().toISOString(),
       };
 
-      console.log('Submitting attraction booking:', bookingData);
+      /*  ➜  NEW API CALL  */
+      await createBooking(bookingPayload);
 
-      const response = await fetch('/api/bookings/attraction', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(bookingData),
-      });
-
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Booking successful:', result);
-        
-        // Add to cart when booking is confirmed
-        if (attractionData) {
-          const cartItem = {
-            id: `${attractionData.id}-${Date.now()}`, // Unique ID for cart item
-            name: attractionData.name,
-            type: 'attraction',
-            price: attractionData.price || 30, // Default price if not provided
-            image: attractionData.image || '/images/dest.jpg',
-            location: attractionData.location,
-            date: formData.date,
-            time: formData.time,
-            guests: formData.guests,
-            bookingDate: formData.date,
-            quantity: 1,
-          };
-          addToCart(cartItem);
-        }
-
-        setShowSuccess(true);
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          phone: '',
-          attraction: '',
-          date: '',
-          time: '',
-          guests: '',
-          specialRequests: '',
+      /*  ➜  SUCCESS HANDLING  */
+      if (attractionData) {
+        addToCart({
+          id: `${attractionData.id}-${Date.now()}`,
+          name: attractionData.name,
+          type: 'attraction',
+          price: attractionData.price || 30,
+          image: attractionData.image || '/images/dest.jpg',
+          location: attractionData.location,
+          date: formData.date,
+          time: formData.time,
+          guests: formData.guests,
+          bookingDate: formData.date,
+          quantity: 1,
         });
-        setTimeout(() => {
-          onClose();
-        }, 2000);
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Booking failed with status:', response.status);
-        console.error('Error data:', errorData);
-        throw new Error(`Booking failed: ${errorData.message || response.statusText}`);
       }
+
+      setShowSuccess(true);
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        attraction: '',
+        date: '',
+        time: '',
+        guests: '',
+        specialRequests: '',
+      });
+      setTimeout(() => onClose(), 2000);
     } catch (error) {
       console.error('Booking error:', error);
       alert(`Booking failed: ${error.message}. Please try again.`);
@@ -199,16 +180,12 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
     }
   };
 
-  const handleCloseSuccess = () => {
-    setShowSuccess(false);
-  };
-
+  const handleCloseSuccess = () => setShowSuccess(false);
   const handleClose = () => {
-    if (!loading) {
-      onClose();
-    }
+    if (!loading) onClose();
   };
 
+  /*  ➜  UI  */
   return (
     <>
       <Dialog
@@ -218,10 +195,7 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
         fullWidth
         fullScreen={isMobile}
         PaperProps={{
-          sx: {
-            borderRadius: isMobile ? 0 : 3,
-            maxHeight: isMobile ? '100%' : '90vh',
-          },
+          sx: { borderRadius: isMobile ? 0 : 3, maxHeight: isMobile ? '100%' : '90vh' },
         }}
       >
         <DialogTitle
@@ -235,31 +209,17 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Attractions />
-            <Typography variant="h6" component="span">
-              Attraction Booking
-            </Typography>
+            <Typography variant="h6">Attraction Booking</Typography>
           </Box>
-          <IconButton
-            onClick={handleClose}
-            sx={{ color: 'white' }}
-            disabled={loading}
-          >
+          <IconButton onClick={handleClose} sx={{ color: 'white' }} disabled={loading}>
             <Close />
           </IconButton>
         </DialogTitle>
 
         <DialogContent sx={{ p: { xs: 2, md: 3 } }}>
           {attractionData && (
-            <Paper
-              elevation={2}
-              sx={{
-                p: 2,
-                mb: 3,
-                borderRadius: 2,
-                backgroundColor: 'grey.50',
-              }}
-            >
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold' }}>
+            <Paper elevation={2} sx={{ p: 2, mb: 3, borderRadius: 2, bgcolor: 'grey.50' }}>
+              <Typography variant="h6" fontWeight="bold">
                 {attractionData.name}
               </Typography>
               <Typography variant="body2" color="text.secondary">
@@ -269,186 +229,114 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
           )}
 
           <Box component="form" onSubmit={handleSubmit}>
-            {/* Personal Information */}
-            <Typography
-              variant="h5"
-              component="h3"
-              gutterBottom
-              sx={{
-                color: theme.palette.primary.main,
-                fontWeight: 'bold',
-                mb: 3,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-              }}
-            >
-              <Person />
+            {/*  PERSONAL INFO  */}
+            <Typography variant="h5" fontWeight="bold" color="primary.main" mb={2}>
+              <Person sx={{ verticalAlign: 'middle', mr: 1 }} />
               Personal Information
             </Typography>
-
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid container spacing={3} mb={4}>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="First Name *"
+                  required
+                  label="First Name"
                   value={formData.firstName}
                   onChange={handleInputChange('firstName')}
-                  required
-                  variant="outlined"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
-                    },
-                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Last Name *"
+                  required
+                  label="Last Name"
                   value={formData.lastName}
                   onChange={handleInputChange('lastName')}
-                  required
-                  variant="outlined"
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
-                    },
-                  }}
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="E-mail *"
+                  required
+                  label="E-mail"
                   type="email"
                   value={formData.email}
                   onChange={handleInputChange('email')}
-                  placeholder="example@example.com"
-                  required
-                  variant="outlined"
                   InputProps={{
                     startAdornment: <Email sx={{ mr: 1, color: 'grey.500' }} />,
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
-                    },
                   }}
                 />
               </Grid>
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Phone *"
+                  required
+                  label="Phone"
                   type="tel"
                   value={formData.phone}
                   onChange={handleInputChange('phone')}
-                  required
-                  variant="outlined"
                   InputProps={{
                     startAdornment: <Phone sx={{ mr: 1, color: 'grey.500' }} />,
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
-                    },
                   }}
                 />
               </Grid>
             </Grid>
 
-            {/* Attraction Details */}
-            <Typography
-              variant="h5"
-              component="h3"
-              gutterBottom
-              sx={{
-                color: theme.palette.primary.main,
-                fontWeight: 'bold',
-                mb: 3,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1,
-              }}
-            >
-              <Attractions />
-              Attraction Details
+            {/*  BOOKING DETAILS  */}
+            <Typography variant="h5" fontWeight="bold" color="primary.main" mb={2}>
+              <Attractions sx={{ verticalAlign: 'middle', mr: 1 }} />
+              Booking Details
             </Typography>
-
-            <Grid container spacing={3} sx={{ mb: 4 }}>
+            <Grid container spacing={3} mb={4}>
               {!attractionData && (
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    label="Attraction Name *"
+                    required
+                    label="Attraction Name"
                     value={formData.attraction}
                     onChange={handleInputChange('attraction')}
                     placeholder="e.g. Eiffel Tower"
-                    required
-                    variant="outlined"
-                    sx={{
-                      '& .MuiOutlinedInput-root': {
-                        borderRadius: 2,
-                      },
-                    }}
                   />
                 </Grid>
               )}
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Date *"
+                  required
+                  label="Date"
                   type="date"
                   value={formData.date}
                   onChange={handleInputChange('date')}
-                  required
-                  variant="outlined"
                   InputLabelProps={{ shrink: true }}
                   InputProps={{
                     startAdornment: <Event sx={{ mr: 1, color: 'grey.500' }} />,
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
-                    },
                   }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Time *"
+                  required
+                  label="Time"
                   type="time"
                   value={formData.time}
                   onChange={handleInputChange('time')}
-                  required
-                  variant="outlined"
                   InputLabelProps={{ shrink: true }}
                   InputProps={{
                     startAdornment: <AccessTime sx={{ mr: 1, color: 'grey.500' }} />,
-                  }}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      borderRadius: 2,
-                    },
                   }}
                 />
               </Grid>
               <Grid item xs={12}>
                 <FormControl fullWidth required>
-                  <InputLabel>Number of Guests *</InputLabel>
+                  <InputLabel>Number of Guests</InputLabel>
                   <Select
                     value={formData.guests}
-                    label="Number of Guests *"
+                    label="Number of Guests"
                     onChange={handleInputChange('guests')}
                     startAdornment={<Group sx={{ mr: 1, color: 'grey.500' }} />}
-                    sx={{
-                      borderRadius: 2,
-                    }}
                   >
-                    <MenuItem value="">Select number of guests</MenuItem>
+                    <MenuItem value="">Select</MenuItem>
                     <MenuItem value="1">1</MenuItem>
                     <MenuItem value="2">2</MenuItem>
                     <MenuItem value="3">3</MenuItem>
@@ -462,45 +350,25 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
               </Grid>
             </Grid>
 
-            {/* Special Requests */}
-            <Typography
-              variant="h5"
-              component="h3"
-              gutterBottom
-              sx={{
-                color: theme.palette.primary.main,
-                fontWeight: 'bold',
-                mb: 3,
-              }}
-            >
+            {/*  SPECIAL REQUESTS  */}
+            <Typography variant="h5" fontWeight="bold" color="primary.main" mb={2}>
               Special Requests
             </Typography>
-
             <TextField
               fullWidth
-              label="Any special requests?"
               multiline
               rows={4}
+              label="Any special requests?"
+              placeholder="Accessibility needs, celebrations, etc."
               value={formData.specialRequests}
               onChange={handleInputChange('specialRequests')}
-              placeholder="Please let us know if you have any special requirements, accessibility needs, or requests..."
-              variant="outlined"
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 2,
-                },
-                mb: 3,
-              }}
+              sx={{ mb: 3 }}
             />
           </Box>
         </DialogContent>
 
         <DialogActions sx={{ p: { xs: 2, md: 3 }, pt: 0 }}>
-          <Button
-            onClick={handleClose}
-            disabled={loading}
-            sx={{ mr: 2 }}
-          >
+          <Button onClick={handleClose} disabled={loading} sx={{ mr: 2 }}>
             Cancel
           </Button>
           <Button
@@ -512,13 +380,8 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
               backgroundColor: theme.palette.primary.main,
               borderRadius: 2,
               px: 3,
-              '&:hover': {
-                backgroundColor: theme.palette.primary.dark,
-              },
-              '&:disabled': {
-                backgroundColor: theme.palette.primary.main,
-                opacity: 0.7,
-              },
+              '&:hover': { backgroundColor: theme.palette.primary.dark },
+              '&:disabled': { backgroundColor: theme.palette.primary.main, opacity: 0.7 },
             }}
           >
             {loading ? 'Processing...' : 'Confirm Booking'}
@@ -526,18 +389,13 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Success Snackbar */}
       <Snackbar
         open={showSuccess}
         autoHideDuration={6000}
         onClose={handleCloseSuccess}
         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
-        <Alert
-          onClose={handleCloseSuccess}
-          severity="success"
-          sx={{ width: '100%' }}
-        >
+        <Alert onClose={handleCloseSuccess} severity="success" sx={{ width: '100%' }}>
           Attraction booking submitted successfully! We'll contact you soon to confirm your reservation.
         </Alert>
       </Snackbar>
@@ -545,4 +403,4 @@ const AttractionBookingForm = ({ open, onClose, attractionData }) => {
   );
 };
 
-export default AttractionBookingForm; 
+export default AttractionBookingForm;

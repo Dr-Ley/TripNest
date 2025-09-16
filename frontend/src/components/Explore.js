@@ -30,6 +30,9 @@ import { Search, FilterList, LocationOn, Hotel, Restaurant, Attractions, AccessT
 import HotelBookingForm from "../components/HotelBookingForm"
 import RestaurantBookingForm from "../components/RestaurantBookingForm"
 import AttractionBookingForm from "../components/AttractionBookingForm"
+import { fetchHotels } from "../api/hotels";
+import { fetchRestaurants } from "../api/restaurants";
+import { fetchAttractions } from "../api/attractions";
 
 const Explore = () => {
   const theme = useTheme()
@@ -56,26 +59,31 @@ const Explore = () => {
   const tabLabels = ["Hotels", "Restaurants", "Attractions"]
 
   // Fetch data from API
-  const fetchData = async (endpoint) => {
-    try {
-      setLoading(true)
-      setError(null)
-      const response = await fetch(`/api/${endpoint}`)
-      const data = await response.json()
+  useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        setLoading(true)
+        setError(null)
 
-      if (data.success) {
-        return data.data
-      } else {
-        throw new Error(data.message || "Failed to fetch data")
+        const [hotelsData, restaurantsData, attractionsData] = await Promise.all([
+          fetchHotels(),
+          fetchRestaurants(),
+          fetchAttractions(),
+        ])
+
+        setHotels(hotelsData || [])
+        setRestaurants(restaurantsData || [])
+        setAttractions(attractionsData || [])
+      } catch (err) {
+        console.error("Error fetching data:", err)
+        setError("Failed to load data. Please try again later.")
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      console.error(`Error fetching ${endpoint}:`, err)
-      setError(`Failed to load ${endpoint}`)
-      return []
-    } finally {
-      setLoading(false)
     }
-  }
+
+    loadAllData()
+  }, [])
 
   useEffect(() => {
     const loadAllData = async () => {
